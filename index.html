@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catch the Answer – Tangkap Jawaban</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:"Trebuchet MS","Comic Sans MS",system-ui,sans-serif;background:#1d3557;color:#1d3557}
+#app{display:flex;flex-direction:column;height:100%}
+
+/* NAVBAR */
+#navbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 14px;background:linear-gradient(90deg,#b91c1c,#ef4444);color:#fff;font-weight:700;font-size:clamp(12px,2.1vw,18px);box-shadow:0 3px 8px rgba(0,0,0,.3);z-index:5}
+.pill{background:rgba(255,255,255,.2);border-radius:999px;padding:4px 12px;white-space:nowrap}
+#navbar .sp{flex:1}
+#navbar button{background:rgba(255,255,255,.25);border:0;color:#fff;border-radius:999px;padding:4px 10px;font-size:inherit;cursor:pointer}
+#timeBar{height:7px;background:#fecaca}
+#timeFill{height:100%;width:100%;background:#22c55e;transition:background .3s}
+
+/* PERTANYAAN */
+#qbar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#fff8e1;border-bottom:4px solid #f59e0b;z-index:4}
+#qnum{background:#f59e0b;color:#fff;border-radius:12px;padding:4px 10px;font-weight:800;font-size:clamp(12px,2vw,16px);white-space:nowrap}
+#qtext{flex:1;font-weight:800;font-size:clamp(18px,3.2vw,30px);color:#7c2d12;line-height:1.2}
+#speak{border:0;background:#fde68a;border-radius:50%;width:42px;height:42px;font-size:20px;cursor:pointer}
+
+/* PANGGUNG */
+#stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(#7dd3fc,#e0f2fe)}
+#game{display:block;border-radius:10px;touch-action:none;cursor:ew-resize;box-shadow:0 6px 22px rgba(0,0,0,.25)}
+#toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);max-width:92%;background:#16a34a;color:#fff;font-weight:800;font-size:clamp(14px,2.4vw,22px);padding:10px 20px;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.3);display:none;text-align:center;z-index:8}
+
+/* KAMERA */
+#camBox{position:absolute;right:10px;bottom:10px;width:170px;background:#000;border:3px solid #fff;border-radius:12px;overflow:hidden;display:none;z-index:6;box-shadow:0 3px 12px rgba(0,0,0,.4)}
+#cam{display:block;width:100%;transform:scaleX(-1)}
+#camDot{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:#facc15;border:3px solid #fff;display:none}
+#camStatus{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);color:#fff;font-size:11px;padding:3px 5px;text-align:center}
+@media(max-width:600px){#camBox{width:110px}}
+
+/* OVERLAY */
+.overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(20,30,70,.6);z-index:10;padding:12px;overflow:auto}
+.card{background:#fff;border-radius:24px;padding:22px 26px;max-width:560px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.4);border:6px solid #f59e0b}
+.card h1{font-size:clamp(22px,4vw,32px);color:#b91c1c;line-height:1.1}
+.card h2{font-size:clamp(20px,3.4vw,28px);color:#b91c1c;margin-bottom:8px}
+.card .sub{color:#475569;font-weight:700;margin:6px 0 12px;font-size:clamp(13px,2vw,16px)}
+.card p{margin:6px 0;font-size:clamp(15px,2.4vw,19px);font-weight:600}
+.card ol{text-align:left;margin:10px auto 12px;padding-left:26px;font-weight:600;font-size:clamp(13px,2vw,16px);line-height:1.5;max-width:420px}
+.card input[type=text]{width:100%;padding:12px 14px;border:3px solid #cbd5e1;border-radius:14px;font-size:20px;font-family:inherit;text-align:center;outline:none}
+.card input[type=text]:focus{border-color:#f59e0b}
+.card input.err{border-color:#ef4444;animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.chk{display:flex;gap:8px;align-items:center;justify-content:center;margin:12px 0;font-weight:700;font-size:clamp(13px,2vw,16px)}
+.chk input{width:20px;height:20px}
+.btn{margin-top:12px;padding:12px 26px;border:0;border-radius:16px;font-size:clamp(16px,2.6vw,22px);font-weight:800;font-family:inherit;color:#fff;background:linear-gradient(#22c55e,#15803d);cursor:pointer;box-shadow:0 5px 0 #166534}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #166534}
+.btn.red{background:linear-gradient(#f87171,#b91c1c);box-shadow:0 5px 0 #7f1d1d}
+.bad{color:#dc2626}.good{color:#15803d}
+.exp{background:#fef9c3;border-radius:12px;padding:8px 10px}
+.stars{font-size:clamp(34px,7vw,52px);letter-spacing:6px}
+.big{font-size:clamp(28px,6vw,46px);font-weight:800;color:#15803d}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="navbar">
+    <span class="pill">👤 <span id="navName">-</span></span>
+    <span class="pill">⭐ Skor: <span id="navScore">0</span></span>
+    <span class="pill" id="navLevel">Level 1/5</span>
+    <span class="sp"></span>
+    <span class="pill" id="navLives">❤️❤️❤️</span>
+    <span class="pill">⏱ <span id="navTime">30</span> dtk</span>
+    <button id="muteBtn" title="Suara">🔊</button>
+  </div>
+  <div id="timeBar"><div id="timeFill"></div></div>
+  <div id="qbar">
+    <span id="qnum">Soal 1/3</span>
+    <span id="qtext">Siap bermain?</span>
+    <button id="speak" title="Bacakan soal">🗣️</button>
+  </div>
+
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div id="toast"></div>
+
+    <div id="camBox">
+      <video id="cam" playsinline muted></video>
+      <div id="camDot"></div>
+      <div id="camStatus">Kamera mati</div>
+    </div>
+
+    <!-- MULAI -->
+    <div class="overlay" id="sStart" style="display:flex">
+      <div class="card">
+        <h1>🧺 CATCH THE ANSWER<br>TANGKAP JAWABAN</h1>
+        <div class="sub">Pendidikan Pancasila • Kelas 2<br>Mengenal Lambang Negara</div>
+        <input type="text" id="nameInput" maxlength="20" placeholder="Tulis namamu di sini..." autocomplete="off">
+        <ol>
+          <li>Baca pertanyaan di bagian atas.</li>
+          <li>Gerakkan telapak tangan ke kiri atau kanan.</li>
+          <li>Keranjang mengikuti tanganmu.</li>
+          <li>Tangkap jawaban yang benar. +100 poin!</li>
+        </ol>
+        <label class="chk"><input type="checkbox" id="useCam" checked> Pakai kamera (gerakan tangan)</label>
+        <div class="sub" style="margin:0">Tanpa kamera? Gunakan mouse, sentuh layar, atau tombol ← →</div>
+        <button class="btn" id="startBtn">Mulai Main ▶</button>
+      </div>
+    </div>
+
+    <!-- INTRO LEVEL -->
+    <div class="overlay" id="sIntro">
+      <div class="card">
+        <h2 id="inTitle">Level 1</h2>
+        <div class="big" style="color:#b91c1c;font-size:clamp(20px,4vw,30px)" id="inName"></div>
+        <p>3 pertanyaan • 3 kesempatan ❤️</p>
+        <p id="inInfo"></p>
+        <button class="btn" id="inBtn">Siap! Mulai ▶</button>
+      </div>
+    </div>
+
+    <!-- UMPAN BALIK SALAH -->
+    <div class="overlay" id="sFeedback">
+      <div class="card">
+        <h2 id="fbTitle"></h2>
+        <div id="fbBody"></div>
+        <button class="btn red" id="fbBtn">Lanjut ▶</button>
+      </div>
+    </div>
+
+    <!-- LEVEL SELESAI -->
+    <div class="overlay" id="sDone">
+      <div class="card">
+        <h2 id="dnTitle">Level selesai!</h2>
+        <div class="stars" id="dnStars">⭐⭐⭐</div>
+        <p>Skor kamu sekarang</p>
+        <div class="big" id="dnScore">0</div>
+        <button class="btn" id="dnBtn">Lanjut ▶</button>
+      </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div class="overlay" id="sOver">
+      <div class="card">
+        <h2>💔 Kesempatan habis</h2>
+        <p>Tidak apa-apa, ayo coba lagi!<br>Semangat, kamu pasti bisa!</p>
+        <button class="btn red" id="ovBtn">Ulangi Level</button>
+      </div>
+    </div>
+
+    <!-- TAMAT -->
+    <div class="overlay" id="sFinish">
+      <div class="card">
+        <h2 id="fnTitle">🎉 Selamat!</h2>
+        <div class="stars" id="fnStars">⭐⭐⭐</div>
+        <p>Skor akhir</p>
+        <div class="big" id="fnScore">0</div>
+        <p id="fnMsg"></p>
+        <button class="btn" id="fnBtn">Main Lagi 🔄</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= DATA SOAL ================= */
+// o = pilihan jawaban, a = indeks jawaban benar, e = penjelasan
+const LEVELS = [
+  { name:"Kenalan dengan Garuda", speed:80, time:30, qs:[
+    { q:"Lambang negara Indonesia adalah ...", o:["🦅 Garuda Pancasila","🐯 Harimau","🦁 Singa"], a:0, e:"Lambang negara Indonesia adalah Garuda Pancasila." },
+    { q:"Garuda pada lambang negara mencengkeram pita bertuliskan ...", o:["Bhinneka Tunggal Ika","Merdeka Belajar","Selamat Datang"], a:0, e:"Pita yang dicengkeram Garuda bertuliskan Bhinneka Tunggal Ika." },
+    { q:"Perisai pada lambang negara tergantung di bagian ... Garuda.", o:["Dada","Kaki","Kepala"], a:0, e:"Perisai tergantung di dada Garuda. Di dalamnya ada lambang kelima sila." }
+  ]},
+  { name:"Mengenal Sila 1 dan 2", speed:95, time:30, qs:[
+    { q:"Jumlah sila dalam Pancasila ada ...", o:["5 (lima)","3 (tiga)","10 (sepuluh)"], a:0, e:"Pancasila terdiri dari lima sila." },
+    { q:"Lambang sila pertama adalah ...", o:["⭐ Bintang","⛓️ Rantai","🌳 Pohon beringin"], a:0, e:"Sila pertama, Ketuhanan Yang Maha Esa, berlambang bintang." },
+    { q:"Lambang sila kedua adalah ...", o:["⛓️ Rantai","⭐ Bintang","🌾 Padi dan kapas"], a:0, e:"Sila kedua, Kemanusiaan yang Adil dan Beradab, berlambang rantai." }
+  ]},
+  { name:"Mengenal Sila 3, 4 dan 5", speed:110, time:30, qs:[
+    { q:"Lambang sila ketiga adalah ...", o:["🌳 Pohon beringin","🐂 Kepala banteng","⭐ Bintang"], a:0, e:"Sila ketiga, Persatuan Indonesia, berlambang pohon beringin." },
+    { q:"Lambang sila keempat adalah ...", o:["🐂 Kepala banteng","⛓️ Rantai","🌾 Padi dan kapas"], a:0, e:"Sila keempat berlambang kepala banteng." },
+    { q:"Lambang sila kelima adalah ...", o:["🌾 Padi dan kapas","🌳 Pohon beringin","⭐ Bintang"], a:0, e:"Sila kelima, Keadilan Sosial bagi Seluruh Rakyat Indonesia, berlambang padi dan kapas." }
+  ]},
+  { name:"Bunyi Sila dan Semboyan", speed:125, time:30, qs:[
+    { q:"Sila pertama berbunyi ...", o:["Ketuhanan Yang Maha Esa","Persatuan Indonesia","Kemanusiaan yang Adil dan Beradab"], a:0, e:"Sila pertama berbunyi: Ketuhanan Yang Maha Esa." },
+    { q:"Sila ketiga berbunyi ...", o:["Persatuan Indonesia","Ketuhanan Yang Maha Esa","Kemanusiaan yang Adil dan Beradab"], a:0, e:"Sila ketiga berbunyi: Persatuan Indonesia." },
+    { q:"Bhinneka Tunggal Ika artinya ...", o:["Berbeda-beda tetapi tetap satu","Rajin pangkal pandai","Maju terus pantang mundur"], a:0, e:"Bhinneka Tunggal Ika artinya berbeda-beda tetapi tetap satu." }
+  ]},
+  { name:"Cinta Lambang Negara", speed:140, time:30, qs:[
+    { q:"Sikap yang baik terhadap lambang negara adalah ...", o:["Menghormati dan merawatnya","Mencoret-coretnya","Merobeknya"], a:0, e:"Kita harus menghormati dan menjaga lambang negara." },
+    { q:"Pancasila adalah ... negara Indonesia.", o:["Dasar","Hiasan","Mainan"], a:0, e:"Pancasila adalah dasar negara Indonesia." },
+    { q:"Lambang negara biasa kita lihat di ...", o:["Dinding ruang kelas","Dalam kulkas","Pohon pisang"], a:0, e:"Lambang Garuda Pancasila dipasang di dinding kelas, kantor, dan tempat penting lainnya." }
+  ]}
+];
+const COLORS = ['#ef476f','#118ab2','#06a77d','#f59e0b','#8b5cf6'];
+const MAX_LIVES = 3;
+
+/* ================= UTIL ================= */
+const $ = id => document.getElementById(id);
+const rand = (a,b) => a + Math.random()*(b-a);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+
+/* ================= CANVAS ================= */
+const W = 960, H = 520, RES = 1.5;
+const canvas = $('game'), ctx = canvas.getContext('2d');
+canvas.width = W*RES; canvas.height = H*RES;
+function sizeCanvas(){
+  const st = $('stage');
+  const s = Math.min(st.clientWidth/W, st.clientHeight/H);
+  canvas.style.width = (W*s)+'px'; canvas.style.height = (H*s)+'px';
+}
+window.addEventListener('resize', sizeCanvas);
+const FONT = '800 22px "Trebuchet MS","Comic Sans MS",sans-serif';
+
+/* ================= STATE ================= */
+let state = 'menu';            // menu | intro | play | ok | feedback | done | over | finish
+let player = '', score = 0, levelStartScore = 0, level = 0, qi = 0, lives = MAX_LIVES, timeLeft = 30;
+let cur = null, objs = [], floats = [];
+const basket = { x: W/2, w: 150 };
+const clouds = [{x:80,y:60,s:1,v:8},{x:380,y:110,s:.8,v:5},{x:650,y:50,s:1.2,v:10},{x:900,y:130,s:.7,v:6}];
+
+/* ================= SUARA ================= */
+let ac = null, soundOn = true;
+function tone(f,d,type='sine',vol=.15,delay=0){
+  if(!soundOn||!ac) return;
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type=type; o.frequency.value=f; o.connect(g); g.connect(ac.destination);
+  const t=ac.currentTime+delay;
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+d);
+  o.start(t); o.stop(t+d);
+}
+const sfxOk   = () => { tone(660,.15); tone(880,.2,'sine',.15,.12); tone(1100,.25,'sine',.15,.25); };
+const sfxBad  = () => { tone(220,.3,'sawtooth',.12); tone(160,.35,'sawtooth',.12,.15); };
+const sfxWin  = () => { [523,659,784,1047].forEach((f,i)=>tone(f,.25,'triangle',.18,i*.15)); };
+$('muteBtn').onclick = () => { soundOn=!soundOn; $('muteBtn').textContent = soundOn?'🔊':'🔇'; };
+$('speak').onclick = () => {
+  if(!cur || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(cur.q.replace('...','titik titik'));
+  u.lang='id-ID'; u.rate=.85; speechSynthesis.speak(u);
+};
+
+/* ================= INPUT ================= */
+let handX = W/2, lastHand = -1e9;
+let ptrX = W/2, lastPtr = 0;
+const keys = {};
+function pointerToX(e){ const r = canvas.getBoundingClientRect(); return clamp((e.clientX-r.left)/r.width*W, 0, W); }
+canvas.addEventListener('pointermove', e => { ptrX = pointerToX(e); lastPtr = performance.now(); });
+canvas.addEventListener('pointerdown', e => { ptrX = pointerToX(e); lastPtr = performance.now(); });
+window.addEventListener('keydown', e => { if(['ArrowLeft','ArrowRight','a','d','A','D'].includes(e.key)) { keys[e.key.toLowerCase().replace('arrow','')] = true; } });
+window.addEventListener('keyup',   e => { keys[e.key.toLowerCase().replace('arrow','')] = false; });
+
+/* ================= KAMERA + DETEKSI TANGAN ================= */
+const cam = $('cam'), camBox = $('camBox'), camDot = $('camDot'), camStatus = $('camStatus');
+let landmarker = null, lastVT = -1, camOn = false, detectTick = 0;
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+
+async function startCamera(){
+  camBox.style.display = 'block';
+  camStatus.textContent = 'Meminta izin kamera...';
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:480, height:360, facingMode:'user' }, audio:false });
+    cam.srcObject = stream; await cam.play(); camOn = true;
+    camStatus.textContent = 'Memuat pendeteksi tangan...';
+    const vision = await import(MP + '/vision_bundle.mjs');
+    const fileset = await vision.FilesetResolver.forVisionTasks(MP + '/wasm');
+    const make = delegate => vision.HandLandmarker.createFromOptions(fileset, {
+      baseOptions:{ modelAssetPath: MODEL, delegate }, runningMode:'VIDEO', numHands:1
+    });
+    try { landmarker = await make('GPU'); } catch(e){ landmarker = await make('CPU'); }
+    camStatus.textContent = 'Tunjukkan telapak tanganmu ✋';
+  }catch(err){
+    console.warn(err);
+    camStatus.textContent = camOn ? 'Deteksi tangan gagal. Pakai mouse/sentuh ya!' : 'Kamera tidak bisa dipakai. Pakai mouse/sentuh ya!';
+  }
+}
+function detectHand(now){
+  if(!landmarker || cam.readyState < 2) return;
+  if((detectTick++ & 1) === 1) return;           // hemat tenaga: tiap 2 frame
+  if(cam.currentTime === lastVT) return;
+  lastVT = cam.currentTime;
+  try{
+    const res = landmarker.detectForVideo(cam, now);
+    if(res.landmarks && res.landmarks.length){
+      const lm = res.landmarks[0];
+      const p = lm[9];                              // pangkal jari tengah = pusat telapak
+      const mx = 1 - p.x;                           // cermin supaya natural
+      handX = clamp((mx - .12) / .76, 0, 1) * W;    // perluas jangkauan gerak
+      lastHand = now;
+      camDot.style.display = 'block';
+      camDot.style.left = (mx*100)+'%'; camDot.style.top = (p.y*100)+'%';
+      camStatus.textContent = '✋ Tangan terdeteksi';
+    } else {
+      camDot.style.display = 'none';
+      camStatus.textContent = 'Tunjukkan telapak tanganmu ✋';
+    }
+  }catch(e){ /* abaikan frame bermasalah */ }
+}
+
+/* ================= TAMPILAN ================= */
+function show(id){ document.querySelectorAll('.overlay').forEach(o => o.style.display='none'); if(id) $(id).style.display='flex'; }
+function updateHUD(){
+  $('navName').textContent = player || '-';
+  $('navScore').textContent = score;
+  $('navLevel').textContent = 'Level ' + (level+1) + '/5';
+  $('navLives').textContent = '❤️'.repeat(Math.max(0,lives)) + '🖤'.repeat(MAX_LIVES-Math.max(0,lives));
+  $('qnum').textContent = 'Soal ' + (qi+1) + '/3';
+}
+function updateTimerUI(){
+  const total = LEVELS[level].time;
+  $('navTime').textContent = Math.ceil(Math.max(0,timeLeft));
+  const pct = clamp(timeLeft/total,0,1)*100;
+  const f = $('timeFill'); f.style.width = pct+'%';
+  f.style.background = timeLeft<=8 ? '#ef4444' : (timeLeft<=15 ? '#f59e0b' : '#22c55e');
+}
+let toastTimer = null;
+function toast(html, ms=1600){
+  const t = $('toast'); t.innerHTML = html; t.style.display='block';
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ t.style.display='none'; }, ms);
+}
+
+/* ================= ALUR GAME ================= */
+function showIntro(){
+  state = 'intro';
+  const L = LEVELS[level];
+  $('inTitle').textContent = 'Level ' + (level+1);
+  $('inName').textContent = L.name;
+  $('inInfo').textContent = 'Waktu tiap soal: ' + L.time + ' detik';
+  $('qtext').textContent = 'Siap bermain?';
+  objs = []; updateHUD();
+  show('sIntro');
+}
+function startLevel(){
+  lives = MAX_LIVES; qi = 0; levelStartScore = score;
+  show(null); loadQuestion();
+}
+function measure(o){
+  ctx.font = FONT;
+  const words = o.text.split(' '), lines = []; let line = '';
+  for(const w of words){
+    const test = line ? line+' '+w : w;
+    if(ctx.measureText(test).width > 200 && line){ lines.push(line); line = w; } else line = test;
+  }
+  if(line) lines.push(line);
+  o.lines = lines;
+  o.w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 46;
+  o.h = lines.length*28 + 28;
+}
+function loadQuestion(){
+  const L = LEVELS[level], q = L.qs[qi];
+  cur = { q:q.q, correct:q.o[q.a], e:q.e };
+  const opts = shuffle(q.o.slice()), lanes = shuffle([0,1,2]), cols = shuffle(COLORS.slice()).slice(0,3);
+  objs = opts.map((t,i) => {
+    const o = { text:t, ok:(t===cur.correct), color:cols[i] };
+    measure(o);
+    o.cx = (lanes[i]+.5)*W/3; o.x = o.cx;
+    o.y = -o.h/2 - i*170 - rand(0,40);
+    o.vy = L.speed * rand(.9,1.15);
+    o.ph = rand(0,6); o.amp = 24;
+    return o;
+  });
+  timeLeft = L.time; floats = [];
+  $('qtext').textContent = cur.q;
+  updateHUD(); updateTimerUI();
+  state = 'play';
+}
+function nextQuestion(){
+  qi++;
+  if(qi >= 3) levelDone(); else loadQuestion();
+}
+function levelDone(){
+  objs = [];
+  sfxWin();
+  if(level >= LEVELS.length-1){ finishGame(); return; }
+  state = 'done';
+  const stars = lives>=3 ? 3 : (lives==2 ? 2 : 1);
+  $('dnTitle').textContent = '🎉 Level ' + (level+1) + ' selesai!';
+  $('dnStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3-stars);
+  $('dnScore').textContent = score;
+  $('dnBtn').textContent = 'Lanjut ke Level ' + (level+2) + ' ▶';
+  show('sDone');
+}
+function finishGame(){
+  state = 'finish';
+  const maxScore = LEVELS.length*3*100;
+  const stars = score >= maxScore*.85 ? 3 : (score >= maxScore*.6 ? 2 : 1);
+  $('fnTitle').textContent = '🎉 Selamat, ' + player + '!';
+  $('fnStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3-stars);
+  $('fnScore').textContent = score + ' / ' + maxScore;
+  $('fnMsg').textContent = stars==3 ? 'Hebat sekali! Kamu sudah kenal lambang negara kita! 🦅'
+                        : stars==2 ? 'Bagus! Sedikit lagi kamu jadi jagoan Pancasila!'
+                        : 'Ayo main lagi supaya makin hafal lambang negara!';
+  updateHUD();
+  show('sFinish');
+}
+function resolveCorrect(){
+  state = 'ok';
+  score += 100; updateHUD(); sfxOk();
+  floats.push({ x:basket.x, y:H-110, t:'+100', life:1.2 });
+  toast('✅ Benar! +100<br><span style="font-size:.8em;font-weight:600">'+esc(cur.e)+'</span>', 2100);
+  setTimeout(()=>{ if(state==='ok') nextQuestion(); }, 2200);
+}
+function resolveWrong(kind, caught){
+  state = 'feedback';
+  lives--; updateHUD(); sfxBad();
+  $('toast').style.display='none';
+  $('fbTitle').textContent = kind==='time' ? '⏰ Waktu habis!' : 'Ups, belum tepat! 🙈';
+  let html = '';
+  if(kind==='catch') html += '<p>Kamu menangkap: <b class="bad">'+esc(caught)+'</b></p>';
+  html += '<p>Jawaban yang benar:<br><b class="good">'+esc(cur.correct)+'</b></p><p class="exp">💡 '+esc(cur.e)+'</p>';
+  $('fbBody').innerHTML = html;
+  $('fbBtn').textContent = lives<=0 ? 'Lanjut ▶' : 'Pertanyaan berikutnya ▶';
+  show('sFeedback');
+}
+
+/* ================= TOMBOL ================= */
+$('startBtn').onclick = () => {
+  const inp = $('nameInput'), name = inp.value.trim();
+  if(!name){ inp.classList.remove('err'); void inp.offsetWidth; inp.classList.add('err'); inp.placeholder='Tulis namamu dulu ya!'; inp.focus(); return; }
+  player = name; score = 0; level = 0;
+  try{ ac = ac || new (window.AudioContext||window.webkitAudioContext)(); ac.resume(); }catch(e){}
+  if($('useCam').checked) startCamera();
+  showIntro();
+};
+$('nameInput').addEventListener('keydown', e => { if(e.key==='Enter') $('startBtn').click(); });
+$('inBtn').onclick = startLevel;
+$('fbBtn').onclick = () => { show(null); if(lives<=0){ state='over'; show('sOver'); } else nextQuestion(); };
+$('dnBtn').onclick = () => { level++; showIntro(); };
+$('ovBtn').onclick = () => { score = levelStartScore; showIntro(); };
+$('fnBtn').onclick = () => { score = 0; level = 0; showIntro(); };
+
+/* ================= UPDATE ================= */
+function update(dt, now){
+  // gerak keranjang: tangan jika terdeteksi baru-baru ini, selain itu mouse/sentuh/keyboard
+  detectHand(now);
+  const left = keys['left']||keys['a'], right = keys['right']||keys['d'];
+  if(left||right){ ptrX = clamp(ptrX + (right?1:0)*620*dt - (left?1:0)*620*dt, 0, W); lastPtr = now; }
+  const useHand = (now - lastHand < 600) && lastHand >= lastPtr;
+  const target = useHand ? handX : ptrX;
+  basket.x += (target - basket.x) * Math.min(1, dt*(useHand?14:20));
+  basket.x = clamp(basket.x, basket.w/2, W-basket.w/2);
+
+  for(const c of clouds){ c.x += c.v*dt; if(c.x > W+120) c.x = -120; }
+  for(const f of floats){ f.life -= dt; f.y -= 50*dt; }
+  floats = floats.filter(f => f.life > 0);
+
+  if(state !== 'play') return;
+
+  timeLeft -= dt; updateTimerUI();
+  if(timeLeft <= 0){ resolveWrong('time'); return; }
+
+  const bTop = H-84;
+  for(const o of objs){
+    o.y += o.vy*dt; o.ph += dt*1.6;
+    o.x = o.cx + Math.sin(o.ph)*o.amp;
+    if(o.y - o.h/2 > H){ o.y = -o.h/2 - rand(20,160); }   // jatuh lagi dari atas
+    const hitY = o.y + o.h/2 >= bTop+8 && o.y - o.h/2 <= H-20;
+    const hitX = Math.abs(o.x - basket.x) < (basket.w/2 + o.w/2 - 28);
+    if(hitY && hitX){
+      if(o.ok) resolveCorrect(); else resolveWrong('catch', o.text);
+      return;
+    }
+  }
+}
+
+/* ================= GAMBAR ================= */
+function drawCloud(c){
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.beginPath();
+  ctx.arc(c.x,c.y,26*c.s,0,7); ctx.arc(c.x+28*c.s,c.y-10*c.s,32*c.s,0,7);
+  ctx.arc(c.x+62*c.s,c.y,26*c.s,0,7); ctx.arc(c.x+30*c.s,c.y+10*c.s,26*c.s,0,7);
+  ctx.fill();
+}
+function drawBG(){
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#7dd3fc'); g.addColorStop(1,'#e0f2fe');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#fde047'; ctx.beginPath(); ctx.arc(870,70,42,0,7); ctx.fill();
+  ctx.fillStyle = 'rgba(253,224,71,.3)'; ctx.beginPath(); ctx.arc(870,70,60,0,7); ctx.fill();
+  clouds.forEach(drawCloud);
+  ctx.fillStyle = '#22c55e'; ctx.fillRect(0,H-22,W,22);
+  ctx.fillStyle = '#16a34a'; ctx.fillRect(0,H-22,W,5);
+}
+function drawBasket(){
+  const x = basket.x, w = basket.w, top = H-84, bot = H-18;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#92400e'; ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.arc(x, top+4, w/2-20, Math.PI, 0); ctx.stroke();
+  ctx.fillStyle = '#d97706';
+  ctx.beginPath(); ctx.moveTo(x-w/2,top); ctx.lineTo(x+w/2,top); ctx.lineTo(x+w/2-16,bot); ctx.lineTo(x-w/2+16,bot); ctx.closePath();
+  ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#92400e'; ctx.stroke();
+  ctx.save(); ctx.clip();
+  ctx.strokeStyle = 'rgba(120,53,15,.55)'; ctx.lineWidth = 3;
+  for(let y=top+16;y<bot;y+=16){ ctx.beginPath(); ctx.moveTo(x-w/2,y); ctx.lineTo(x+w/2,y); ctx.stroke(); }
+  for(let i=-w/2;i<w/2;i+=20){ ctx.beginPath(); ctx.moveTo(x+i,top); ctx.lineTo(x+i+10,bot); ctx.stroke(); }
+  ctx.restore();
+  ctx.fillStyle = '#b45309'; rr(ctx, x-w/2-7, top-8, w+14, 14, 7); ctx.fill();
+  ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2; ctx.stroke();
+}
+function drawObj(o){
+  const x = o.x - o.w/2, y = o.y - o.h/2;
+  // tali kecil
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(o.x, y-14); ctx.lineTo(o.x, y); ctx.stroke();
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+  ctx.fillStyle = o.color; rr(ctx, x, y, o.w, o.h, 26); ctx.fill();
+  ctx.restore();
+  ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; rr(ctx, x, y, o.w, o.h, 26); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.25)'; rr(ctx, x+8, y+6, o.w-16, o.h/3, 14); ctx.fill();
+  ctx.font = FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  o.lines.forEach((l,i) => {
+    const ty = o.y - (o.lines.length-1)*14 + i*28;
+    ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.strokeText(l, o.x, ty);
+    ctx.fillStyle = '#fff'; ctx.fillText(l, o.x, ty);
+  });
+}
+function render(){
+  ctx.setTransform(RES,0,0,RES,0,0);
+  drawBG();
+  objs.forEach(drawObj);
+  drawBasket();
+  for(const f of floats){
+    ctx.globalAlpha = clamp(f.life,0,1);
+    ctx.font = '800 40px "Trebuchet MS",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.lineWidth = 6; ctx.strokeStyle = '#166534'; ctx.strokeText(f.t,f.x,f.y);
+    ctx.fillStyle = '#fef08a'; ctx.fillText(f.t,f.x,f.y);
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ================= LOOP ================= */
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(.05, (now-last)/1000); last = now;
+  update(dt, now); render();
+  requestAnimationFrame(loop);
+}
+sizeCanvas(); updateHUD(); updateTimerUI();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
